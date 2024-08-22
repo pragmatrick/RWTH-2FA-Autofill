@@ -1,7 +1,7 @@
 # RWTH SSO Autofill by Patrick Graf
 
 # How to install
-Download the latest release & unzip the folder.
+Download the [latest release](https://github.com/pragmatrick/RWTH-SSO-Autofill/releases/tag/Official) & unzip the folder.
 -> Go to your Chromium Browser
 
 -> Manage Extensions 
