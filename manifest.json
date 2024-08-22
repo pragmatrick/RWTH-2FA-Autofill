@@ -1,6 +1,6 @@
 {
 	"manifest_version": 3,
-	"name": "RWTH SSO Autofill",
+	"name": "RWTH 2FA Autofill",
 	"description": "by Patrick Graf",
 	"developer": {
 		"author": "Patrick Graf",
