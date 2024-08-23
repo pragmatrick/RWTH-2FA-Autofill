@@ -54,12 +54,10 @@ function generateOtp(secret) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-	console.log("Received request:", request);
 	if (request.action === "getOtp") {
 		chrome.storage.sync.get("otpSecret", (data) => {
 			if (data.otpSecret) {
 				const otp = generateOtp(data.otpSecret);
-				console.log("OTP:", otp);
 				sendResponse({ otp });
 			} else {
 				console.error("OTP secret is not set.");

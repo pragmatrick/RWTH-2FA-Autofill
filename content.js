@@ -40,7 +40,6 @@ function fillOtpAndProceed(otpCode) {
 	}
 }
 
-console.log("manifested:" + window.location.href);
 // Check the URL using regular expressions
 if (matchesUrlPattern("execution=e.*s2")) {
 	// Matches "execution=e" followed by any characters and then "s2"
