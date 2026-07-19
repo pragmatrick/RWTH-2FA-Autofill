@@ -65,6 +65,35 @@
 				font-size: 30px;
 				font-weight: bold;
 				letter-spacing: 2px;
+				cursor: pointer;
+				user-select: none;
+				border-radius: 4px;
+				padding: 2px 6px;
+				margin-left: -6px;
+				transition: background-color 0.12s;
+			}
+			#otpCode:hover {
+				background-color: rgba(0, 84, 159, 0.12);
+			}
+			#otpCode:active {
+				background-color: rgba(0, 84, 159, 0.24);
+			}
+			/* Appears at the cursor on click, then disappears. Visibility is
+			   not animated, so it still shows if transitions are suppressed. */
+			#copiedToast {
+				position: fixed;
+				z-index: 1;
+				pointer-events: none;
+				font-size: 11px;
+				padding: 2px 6px;
+				border-radius: 3px;
+				background: #333;
+				color: #fff;
+				opacity: 0.92;
+				display: none;
+			}
+			#copiedToast.show {
+				display: block;
 			}
 			#ring .ring-bg {
 				fill: none;
@@ -85,6 +114,16 @@
 				}
 				#ring .ring-fg {
 					stroke: #5b9bd5;
+				}
+				#otpCode:hover {
+					background-color: rgba(91, 155, 213, 0.22);
+				}
+				#otpCode:active {
+					background-color: rgba(91, 155, 213, 0.36);
+				}
+				#copiedToast {
+					background: #eee;
+					color: #111;
 				}
 			}
 		</style>
@@ -114,7 +153,13 @@
 				<button id="redoBtn" class="icon-btn" title="Redo setup">⚙</button>
 			</div>
 			<div class="code-row">
-				<span id="otpCode">··· ···</span>
+				<span
+					id="otpCode"
+					role="button"
+					tabindex="0"
+					title="Click to copy"
+					>··· ···</span
+				>
 				<svg
 					id="ring"
 					width="40"
@@ -133,6 +178,8 @@
 				</svg>
 			</div>
 		</div>
+
+		<span id="copiedToast">Copied</span>
 
 		<script src="popup.js"></script>
 	</body>

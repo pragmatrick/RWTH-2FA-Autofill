@@ -14,11 +14,15 @@ const secretInput = document.getElementById("otpSecret");
 const cancelBtn = document.getElementById("cancelBtn");
 const tokenName = document.getElementById("tokenName");
 const otpCode = document.getElementById("otpCode");
+const copiedToast = document.getElementById("copiedToast");
 const ringProgress = document.getElementById("ringProgress");
 
 let savedSerial = null;
 let ticker = null;
 let lastPeriod = null;
+// The code as digits only; otpCode's text carries a space for readability.
+let currentOtp = null;
+let toastTimer = null;
 
 ringProgress.style.strokeDasharray = RING_CIRCUMFERENCE;
 
@@ -40,13 +44,76 @@ function showCodeView() {
 function refreshCode() {
 	chrome.runtime.sendMessage({ action: "getOtp" }, (response) => {
 		if (response && response.otp) {
+			currentOtp = response.otp;
 			otpCode.textContent =
 				response.otp.slice(0, 3) + " " + response.otp.slice(3);
 		} else {
+			currentOtp = null;
 			otpCode.textContent = "error";
 		}
 	});
 }
+
+function showCopiedToast(x, y) {
+	copiedToast.style.left = `${x + 10}px`;
+	copiedToast.style.top = `${y + 10}px`;
+	copiedToast.classList.add("show");
+	clearTimeout(toastTimer);
+	toastTimer = setTimeout(() => copiedToast.classList.remove("show"), 900);
+}
+
+// Synchronous fallback for when the async clipboard API is unavailable
+// or rejects (it needs clipboard-write, which not every context grants).
+function copyViaTextarea(text) {
+	const scratch = document.createElement("textarea");
+	scratch.value = text;
+	scratch.setAttribute("readonly", "");
+	scratch.style.position = "fixed";
+	scratch.style.opacity = "0";
+	document.body.appendChild(scratch);
+	scratch.select();
+	let ok = false;
+	try {
+		ok = document.execCommand("copy");
+	} catch (error) {
+		ok = false;
+	}
+	scratch.remove();
+	return ok;
+}
+
+function copyCode(x, y) {
+	if (!currentOtp) {
+		return;
+	}
+	const fallback = () => {
+		if (copyViaTextarea(currentOtp)) {
+			showCopiedToast(x, y);
+		} else {
+			console.error("Copy failed.");
+		}
+	};
+	if (navigator.clipboard) {
+		navigator.clipboard
+			.writeText(currentOtp)
+			.then(() => showCopiedToast(x, y), fallback);
+	} else {
+		fallback();
+	}
+}
+
+otpCode.addEventListener("click", (event) => {
+	copyCode(event.clientX, event.clientY);
+});
+
+otpCode.addEventListener("keydown", (event) => {
+	if (event.key === "Enter" || event.key === " ") {
+		event.preventDefault();
+		// No cursor position for a keyboard activation: anchor to the code.
+		const box = otpCode.getBoundingClientRect();
+		copyCode(box.right - 10, box.bottom - 14);
+	}
+});
 
 function tick() {
 	const seconds = Date.now() / 1000;
