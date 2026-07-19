@@ -53,16 +53,45 @@ function generateOtp(secret) {
 	return otp;
 }
 
+// Pre-1.1 versions kept credentials in chrome.storage.sync, which uploads
+// them to the browser vendor's cloud. Move them to device-local storage.
+function migrateSyncToLocal() {
+	const keys = ["serialNumber", "otpSecret"];
+	chrome.storage.sync.get(keys, (synced) => {
+		if (!synced.serialNumber && !synced.otpSecret) {
+			return;
+		}
+		chrome.storage.local.get(keys, (local) => {
+			chrome.storage.local.set({ ...synced, ...local }, () => {
+				chrome.storage.sync.remove(keys);
+			});
+		});
+	});
+}
+chrome.runtime.onInstalled.addListener(migrateSyncToLocal);
+chrome.runtime.onStartup.addListener(migrateSyncToLocal);
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	if (request.action === "getOtp") {
-		chrome.storage.sync.get("otpSecret", (data) => {
-			if (data.otpSecret) {
-				const otp = generateOtp(data.otpSecret);
-				sendResponse({ otp });
-			} else {
-				console.error("OTP secret is not set.");
-				sendResponse({ error: "OTP secret is not set." });
-			}
+		// Only answer our own content script running on the RWTH SSO page.
+		if (
+			sender.id !== chrome.runtime.id ||
+			!sender.url ||
+			!sender.url.startsWith("https://sso.rwth-aachen.de/")
+		) {
+			sendResponse({ error: "Unauthorized sender." });
+			return;
+		}
+		chrome.storage.local.get("otpSecret", (data) => {
+			chrome.storage.sync.get("otpSecret", (legacy) => {
+				const otpSecret = data.otpSecret ?? legacy.otpSecret;
+				if (otpSecret) {
+					sendResponse({ otp: generateOtp(otpSecret) });
+				} else {
+					console.error("OTP secret is not set.");
+					sendResponse({ error: "OTP secret is not set." });
+				}
+			});
 		});
 		return true; // Indicate that you want to send a response asynchronously
 	}

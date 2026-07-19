@@ -1,6 +1,23 @@
-function matchesUrlPattern(pattern) {
-	const regex = new RegExp(pattern);
-	return regex.test(window.location.href);
+// The Shibboleth login flow encodes its step in the "execution" URL
+// parameter, e.g. e1s1 = password, e1s2 = token selection, e1s3 = OTP entry.
+function getExecutionStep() {
+	const execution = new URLSearchParams(window.location.search).get(
+		"execution"
+	);
+	const match = /^e\d+s(\d+)$/.exec(execution || "");
+	return match ? match[1] : null;
+}
+
+// Read a credential from local storage, falling back to the synced
+// storage used by pre-1.1 versions.
+function getCredential(key, callback) {
+	chrome.storage.local.get(key, (data) => {
+		if (data[key] !== undefined) {
+			callback(data[key]);
+		} else {
+			chrome.storage.sync.get(key, (legacy) => callback(legacy[key]));
+		}
+	});
 }
 
 async function selectOptionAndProceed() {
@@ -8,12 +25,12 @@ async function selectOptionAndProceed() {
 		"#fudis_selected_token_ids_input"
 	);
 	if (selectElement) {
-		chrome.storage.sync.get("serialNumber", (data) => {
-			if (!data.serialNumber) {
+		getCredential("serialNumber", (serialNumber) => {
+			if (!serialNumber) {
 				console.error("serialNumber secret is not set.");
 				return;
 			}
-			selectElement.value = data.serialNumber;
+			selectElement.value = serialNumber;
 			selectElement.dispatchEvent(new Event("change", { bubbles: true }));
 
 			const submitButton = document.querySelector(
@@ -40,13 +57,11 @@ function fillOtpAndProceed(otpCode) {
 	}
 }
 
-// Check the URL using regular expressions
-if (matchesUrlPattern("execution=e.*s2")) {
-	// Matches "execution=e" followed by any characters and then "s2"
+const step = getExecutionStep();
+if (step === "2") {
 	selectOptionAndProceed();
 }
-if (matchesUrlPattern("execution=e.*s3")) {
-	// Matches "execution=e" followed by any characters and then "s3"
+if (step === "3") {
 	try {
 		chrome.runtime.sendMessage({ action: "getOtp" }, (response) => {
 			if (response && response.otp) {
