@@ -73,23 +73,29 @@ chrome.runtime.onStartup.addListener(migrateSyncToLocal);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	if (request.action === "getOtp") {
-		// Only answer our own content script running on the RWTH SSO page.
-		if (
-			sender.id !== chrome.runtime.id ||
-			!sender.url ||
-			!sender.url.startsWith("https://sso.rwth-aachen.de/")
-		) {
+		// Only answer our own pages (popup) or our content script on the SSO page.
+		const fromOwnPage =
+			sender.url &&
+			sender.url.startsWith(`chrome-extension://${chrome.runtime.id}/`);
+		const fromSsoPage =
+			sender.url && sender.url.startsWith("https://sso.rwth-aachen.de/");
+		if (sender.id !== chrome.runtime.id || (!fromOwnPage && !fromSsoPage)) {
 			sendResponse({ error: "Unauthorized sender." });
 			return;
 		}
 		chrome.storage.local.get("otpSecret", (data) => {
 			chrome.storage.sync.get("otpSecret", (legacy) => {
 				const otpSecret = data.otpSecret ?? legacy.otpSecret;
-				if (otpSecret) {
-					sendResponse({ otp: generateOtp(otpSecret) });
-				} else {
+				if (!otpSecret) {
 					console.error("OTP secret is not set.");
 					sendResponse({ error: "OTP secret is not set." });
+					return;
+				}
+				try {
+					sendResponse({ otp: generateOtp(otpSecret) });
+				} catch (error) {
+					console.error("Failed to generate OTP:", error);
+					sendResponse({ error: "Invalid OTP secret." });
 				}
 			});
 		});

@@ -20,6 +20,31 @@ function getCredential(key, callback) {
 	});
 }
 
+// Set once the browser starts leaving this page, i.e. a proceed click worked.
+let navigationStarted = false;
+window.addEventListener("beforeunload", () => {
+	navigationStarted = true;
+});
+
+// Very rarely the proceed click lands before the page's own scripts are
+// ready and nothing happens. Click immediately, and only if the page is
+// still around after a pause, click again — no delay in the normal case.
+function clickProceed(retriesLeft) {
+	if (navigationStarted) {
+		return;
+	}
+	const submitButton = document.querySelector(
+		'button[name="_eventId_proceed"]'
+	);
+	if (!submitButton) {
+		return;
+	}
+	submitButton.click();
+	if (retriesLeft > 0) {
+		setTimeout(() => clickProceed(retriesLeft - 1), 1200);
+	}
+}
+
 async function selectOptionAndProceed() {
 	const selectElement = document.querySelector(
 		"#fudis_selected_token_ids_input"
@@ -32,13 +57,7 @@ async function selectOptionAndProceed() {
 			}
 			selectElement.value = serialNumber;
 			selectElement.dispatchEvent(new Event("change", { bubbles: true }));
-
-			const submitButton = document.querySelector(
-				'button[name="_eventId_proceed"]'
-			);
-			if (submitButton) {
-				submitButton.click();
-			}
+			clickProceed(2);
 		});
 	}
 }
